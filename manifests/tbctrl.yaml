@@ -112,7 +112,7 @@ spec:
             readOnlyRootFilesystem: true
             runAsNonRoot: true
             runAsUser: 65532
-          image: "ghcr.io/zoomoid/tbc:0.1.0"
+          image: "ghcr.io/zoomoid/tbctrl:0.1.0"
           imagePullPolicy: IfNotPresent
           args:
             - --metrics-bind-address
