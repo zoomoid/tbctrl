@@ -1,0 +1,75 @@
+# Default values for tbctrl.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+logging:
+  level: 0
+
+image:
+  repository: ghcr.io/zoomoid/tbc
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ""
+
+metrics:
+  enabled: true
+  serviceType: ClusterIP
+  port: 8080
+  annotations: {}
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext:
+  {}
+  # fsGroup: 2000
+
+securityContext:
+  runAsUser: 65532
+  runAsNonRoot: true
+  privileged: false
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["all"]
+
+service:
+  type: ClusterIP
+  port: 80
+
+resources:
+  requests:
+    memory: "64Mi"
+    cpu: "100m"
+  limits:
+    memory: "128Mi"
+    cpu: "500m"
+
+nodeSelector: {}
+
+tolerations:
+  - effect: NoSchedule
+    key: node-role.kubernetes.io/master
+    operator: Equal
+  - effect: NoSchedule
+    key: node-role.kubernetes.io/control-plane
+    operator: Equal
+
+rbac:
+  manage: true
+
+dnsPolicy: ""
+
+affinity: {}
