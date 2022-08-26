@@ -22,6 +22,11 @@ import (
 )
 
 var (
+	build   = "0"
+	version = "v0.0.0-0"
+)
+
+var (
 	scheme   = runtime.NewScheme()
 	setupLog = ctrl.Log.WithName("setup")
 )
@@ -44,9 +49,13 @@ func main() {
 
 	flag.Parse()
 
-	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&zap.Options{
+	l := zap.New(zap.UseFlagOptions(&zap.Options{
 		Level: zapcore.Level(logLevel),
-	})))
+	}))
+
+	ctrl.SetLogger(l)
+
+	l.V(0).Info("Starting controller", "version", version, "build", build)
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
