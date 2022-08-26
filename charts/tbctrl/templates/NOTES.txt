@@ -1,1 +1,0 @@
-You just deployed tbctrl. Now watch it reconcile your kubelet CSRs for you!
