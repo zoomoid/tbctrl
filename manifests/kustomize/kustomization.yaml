@@ -1,0 +1,14 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - clusterrole.yaml
+  - deployment.yaml
+  - rolebinding.yaml
+  - service.yaml
+  - serviceaccount.yaml
+commonLabels:
+  app.kubernetes.io/name: tbctrl
+  app.kubernetes.io/instance: tbctrl
+images:
+  - name: tbctrl
+    newTag: 0.1.0

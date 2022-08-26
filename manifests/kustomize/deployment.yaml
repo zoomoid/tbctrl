@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tbctrl
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tbctrl
+      app.kubernetes.io/instance: tbctrl
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: tbctrl
+        app.kubernetes.io/instance: tbctrl
+    spec:
+      serviceAccountName: tbctrl
+      securityContext: {}
+      containers:
+        - name: tbctrl
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - all
+            privileged: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65532
+          image: "ghcr.io/zoomoid/tbctrl:latest"
+          imagePullPolicy: IfNotPresent
+          args:
+            - --metrics-bind-address
+            - ":8080"
+            - --health-probe-bind-address
+            - ":8081"
+          ports:
+            - name: metrics
+              containerPort: 8080
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8081
+          resources:
+            limits:
+              cpu: 500m
+              memory: 128Mi
+            requests:
+              cpu: 100m
+              memory: 64Mi
+      tolerations:
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/master
+          operator: Equal
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/control-plane
+          operator: Equal
