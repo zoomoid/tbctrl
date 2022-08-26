@@ -1,0 +1,143 @@
+---
+# Source: tbctrl/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tbctrl
+  labels:
+    app.kubernetes.io/name: tbctrl
+    app.kubernetes.io/instance: tbctrl
+    app.kubernetes.io/version: "0.1.0"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: tbctrl
+  labels:
+    app.kubernetes.io/name: tbctrl
+    app.kubernetes.io/instance: tbctrl
+    app.kubernetes.io/version: "0.1.0"
+rules:
+  - apiGroups:
+      - certificates.k8s.io
+    resources:
+      - certificatesigningrequests
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - certificates.k8s.io
+    resources:
+      - certificatesigningrequests/approval
+    verbs:
+      - update
+  - apiGroups:
+      - certificates.k8s.io
+    resourceNames:
+      - kubernetes.io/kubelet-serving
+    resources:
+      - signers
+    verbs:
+      - approve
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: tbctrl
+  labels:
+    app.kubernetes.io/name: tbctrl
+    app.kubernetes.io/instance: tbctrl
+    app.kubernetes.io/version: "0.1.0"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: tbctrl
+subjects:
+  - kind: ServiceAccount
+    name: tbctrl
+    namespace: default
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tbctrl
+  labels:
+    app.kubernetes.io/name: tbctrl
+    app.kubernetes.io/instance: tbctrl
+    app.kubernetes.io/version: "0.1.0"
+  annotations:
+    prometheus.io/port: "8080"
+    prometheus.io/scrape: "true"
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8080
+      targetPort: metrics
+      protocol: TCP
+      name: metrics
+  selector:
+    app.kubernetes.io/name: tbctrl
+    app.kubernetes.io/instance: tbctrl
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tbctrl
+  labels:
+    app.kubernetes.io/name: tbctrl
+    app.kubernetes.io/instance: tbctrl
+    app.kubernetes.io/version: "0.1.0"
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tbctrl
+      app.kubernetes.io/instance: tbctrl
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: tbctrl
+        app.kubernetes.io/instance: tbctrl
+    spec:
+      serviceAccountName: tbctrl
+      securityContext: {}
+      containers:
+        - name: tbctrl
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - all
+            privileged: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65532
+          image: "ghcr.io/zoomoid/tbc:0.1.0"
+          imagePullPolicy: IfNotPresent
+          args:
+            - --metrics-bind-address
+            - ":8080"
+            - --health-probe-bind-address
+            - ":8081"
+          ports:
+            - name: metrics
+              containerPort: 8080
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8081
+          resources:
+            limits:
+              cpu: 500m
+              memory: 128Mi
+            requests:
+              cpu: 100m
+              memory: 64Mi
+      tolerations:
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/master
+          operator: Equal
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/control-plane
+          operator: Equal
