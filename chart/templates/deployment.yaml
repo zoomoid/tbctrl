@@ -5,9 +5,6 @@ metadata:
   labels:
     {{- include "tbctrl.labels" . | nindent 4 }}
 spec:
-  {{- if not .Values.autoscaling.enabled }}
-  replicas: {{ .Values.replicaCount }}
-  {{- end }}
   selector:
     matchLabels:
       {{- include "tbctrl.selectorLabels" . | nindent 6 }}
