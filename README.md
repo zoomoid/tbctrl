@@ -29,5 +29,12 @@ $ helm install tls-bootstrapping-controller tbctrl/tbctrl -n kube-system
 
 ## Deploy from manifests
 
-You can also use static manifests, either the YAMLs directly, or in form of a kustomization:
+You can also use static manifests, but be aware of the configuration: by default metrics are enabled,
+and the version is "latest".
 
+```bash
+# Deploy controller to kube-system namespace
+$ kubectl apply -n kube-system -f https://raw.githubusercontent.com/zoomoid/tbctrl/main/manifests/tbctrl.yaml
+```
+
+You can also use the kustomization available in `./manifests/kustomization` as a base to customize the deployment without having to dig too deep into the YAML files.
