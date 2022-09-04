@@ -117,7 +117,7 @@ func (r *CertificateSigningRequestReconciler) Validate(ctx context.Context, csr 
 		return
 	}
 
-	appendCondition(csr, true, "")
+	appendCondition(csr, true, "CSR is scoped correctly")
 }
 
 func appendCondition(csr *certificatesv1.CertificateSigningRequest, approve bool, reason string) {
@@ -125,8 +125,8 @@ func appendCondition(csr *certificatesv1.CertificateSigningRequest, approve bool
 		csr.Status.Conditions = append(csr.Status.Conditions, certificatesv1.CertificateSigningRequestCondition{
 			Type:               certificatesv1.CertificateApproved,
 			Status:             corev1.ConditionTrue,
-			Reason:             "kubelet-serving certificate CSR approved",
-			Message:            "CSR is scoped correctly",
+			Reason:             "kubelet-serving CSR approved",
+			Message:            reason,
 			LastUpdateTime:     metav1.Now(),
 			LastTransitionTime: metav1.Time{},
 		})
@@ -134,8 +134,8 @@ func appendCondition(csr *certificatesv1.CertificateSigningRequest, approve bool
 		csr.Status.Conditions = append(csr.Status.Conditions, certificatesv1.CertificateSigningRequestCondition{
 			Type:               certificatesv1.CertificateDenied,
 			Status:             corev1.ConditionTrue,
-			Reason:             "kubelet-serving certificate CSR denied",
-			Message:            "CSR is not compliant with scope",
+			Reason:             "kubelet-serving CSR denied",
+			Message:            reason,
 			LastUpdateTime:     metav1.Now(),
 			LastTransitionTime: metav1.Time{},
 		})
