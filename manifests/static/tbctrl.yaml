@@ -101,6 +101,7 @@ spec:
     spec:
       serviceAccountName: tbctrl
       securityContext: {}
+      priorityClassName: system-node-critical
       containers:
         - name: tbctrl
           securityContext:
@@ -112,7 +113,7 @@ spec:
             readOnlyRootFilesystem: true
             runAsNonRoot: true
             runAsUser: 65532
-          image: "ghcr.io/zoomoid/tbctrl:latest"
+          image: "ghcr.io/zoomoid/tbctrl/tbctrl:latest"
           imagePullPolicy: IfNotPresent
           args:
             - --metrics-bind-address
@@ -141,3 +142,9 @@ spec:
         - effect: NoSchedule
           key: node-role.kubernetes.io/control-plane
           operator: Equal
+        - effect: NoSchedule
+          value: "true"
+          key: "node.cloudprovider.kubernetes.io/uninitialized"
+        - effect: NoSchedule
+          operator: Exists
+          key: "node.kubernetes.io/not-ready"

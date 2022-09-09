@@ -11,4 +11,5 @@ commonLabels:
   app.kubernetes.io/instance: tbctrl
 images:
   - name: tbctrl
-    newTag: 0.1.0
+    newTag: latest
+    newName: ghcr.io/zoomoid/tbctrl/tbctrl
