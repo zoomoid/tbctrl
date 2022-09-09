@@ -8,7 +8,9 @@ import (
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
+
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -72,9 +74,10 @@ func main() {
 	}
 
 	if err = (&controller.CertificateSigningRequestReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-		Config: ctrl.GetConfigOrDie(),
+		Client:    mgr.GetClient(),
+		Scheme:    mgr.GetScheme(),
+		Config:    ctrl.GetConfigOrDie(),
+		ClientSet: kubernetes.NewForConfigOrDie(ctrl.GetConfigOrDie()),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "CertificateSigningRequestManager")
 		os.Exit(1)
