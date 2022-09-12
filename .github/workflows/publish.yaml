@@ -2,7 +2,7 @@ name: "Publish release"
 
 on: 
   push:
-    branches: [ "main" ]
+    # branches: [ "main" ]
     # Publish semver tags as releases.
     tags: [ 'v*.*.*' ]
 
@@ -11,7 +11,6 @@ env:
   REGISTRY: ghcr.io
   # github.repository as <account>/<repo>
   IMAGE_NAME: ${{ github.repository }}
-
 
 jobs:
   publish-container:
@@ -31,8 +30,9 @@ jobs:
         run: |
           export VERSION=${{ github.ref_name }}
           export BUILD=${{ github.sha }}
-          ko publish ./ --platform=linux/amd64 -B --tags=${{ github.ref_name }}  --sbom=none
+          ko publish ./ --platform=linux/amd64 -B --sbom=none --tags=${{ github.ref_name }}
           ko publish ./ --platform=linux/amd64 -B --sbom=none
+
   publish-chart:
     runs-on: ubuntu-latest
     steps:
