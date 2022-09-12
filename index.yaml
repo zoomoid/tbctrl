@@ -2,11 +2,11 @@ apiVersion: v1
 entries:
   tbctrl:
   - apiVersion: v2
-    appVersion: 0.1.6
-    created: "2022-09-12T00:43:55.455676603Z"
+    appVersion: 0.1.7
+    created: "2022-09-12T00:44:34.908083835Z"
     description: A Helm chart for running a controller that approves or denies kubelet-serving
       CSRs
-    digest: f9316e7b41962ffde348ede6e20c98705f39f70527ddc76403ecbac409f458a2
+    digest: 3dcbd0e78541a7243042cb183e1f482d7a850776d08be907f7b9957f32503dd3
     home: https://github.com/zoomoid/tbctrl
     maintainers:
     - email: occloxium@gmail.com
@@ -37,4 +37,4 @@ entries:
     urls:
     - https://zoomoid.github.io/tbctrl/tbctrl-0.1.0.tgz
     version: 0.1.0
-generated: "2022-09-12T00:43:55.454439898Z"
+generated: "2022-09-12T00:44:34.90711943Z"
