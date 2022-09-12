@@ -31,7 +31,6 @@ jobs:
           export VERSION=${{ github.ref_name }}
           export BUILD=${{ github.sha }}
           ko publish ./ --platform=linux/amd64 -B --sbom=none --tags=${{ github.ref_name }}
-          ko publish ./ --platform=linux/amd64 -B --sbom=none
 
   publish-chart:
     runs-on: ubuntu-latest
