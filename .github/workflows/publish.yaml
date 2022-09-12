@@ -31,8 +31,8 @@ jobs:
         run: |
           export VERSION=${{ github.ref_name }}
           export BUILD=${{ github.sha }}
-          ko publish ./ --base-import-paths --platform=linux/amd64,linux/arm64,linux/arm --tag ${{ github.ref_name }}
-          ko publish ./ --base-import-paths --platform=linux/amd64,linux/arm64,linux/arm
+          ko publish ./ --platform=linux/amd64 -B --tags=${{ github.ref_name }}  --sbom=none
+          ko publish ./ --platform=linux/amd64 -B --sbom=none
   publish-chart:
     runs-on: ubuntu-latest
     steps:
