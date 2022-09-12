@@ -8,25 +8,25 @@ metadata:
     {{- include "tbctrl.labels" . | nindent 4 }}
 rules:
 - apiGroups:
-  - certificates.k8s.io
+    - certificates.k8s.io
   resources:
-  - certificatesigningrequests
+    - certificatesigningrequests
   verbs:
-  - get
-  - list
-  - watch
+    - get
+    - list
+    - watch
 - apiGroups:
-  - certificates.k8s.io
+    - certificates.k8s.io
   resources:
-  - certificatesigningrequests/approval
+    - certificatesigningrequests/approval
   verbs:
-  - update
+    - update
 - apiGroups:
-  - certificates.k8s.io
+    - certificates.k8s.io
   resourceNames:
-  - kubernetes.io/kubelet-serving
+    - kubernetes.io/kubelet-serving
   resources:
-  - signers
+    - signers
   verbs:
-  - approve
+    - approve
 {{- end }}
