@@ -1,4 +1,4 @@
-package controller
+package controllers
 
 import (
 	"context"
@@ -7,13 +7,13 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/go-logr/logr"
 	certificatesv1 "k8s.io/api/certificates/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	"k8s.io/klog/v2"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -30,6 +30,7 @@ type CertificateSigningRequestReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 	*rest.Config
+	Logger logr.Logger
 }
 
 //+kubebuilder:rbac:groups=certificates.k8s.io,resources=certificatesigningrequests,verbs=get;watch;list
@@ -42,37 +43,35 @@ func (r *CertificateSigningRequestReconciler) Reconcile(ctx context.Context, req
 		if apierrors.IsNotFound(err) {
 			return ctrl.Result{}, err
 		}
-
-		klog.Error(err, "Unable to get CSR with name: %s", req.Name)
-
+		r.Logger.Error(err, "Unable to get CSR", "name", req.Name)
 		return ctrl.Result{}, err
 	}
 
 	if csr.Spec.SignerName != certificatesv1.KubeletServingSignerName {
-		klog.V(4).Info("Ignoring non-kubelet-serving CSR")
+		r.Logger.V(4).Info("Ignoring non-kubelet-serving CSR")
 
 		return ctrl.Result{}, nil
 	}
 
 	if approved, denied := getCertApprovalCondition(&csr.Status); approved || denied {
-		klog.V(3).Info("The CSR is already approved|denied, ignoring", "approved", approved, "denied", denied)
+		r.Logger.V(3).Info("The CSR is already approved/denied, ignoring", "approved", approved, "denied", denied)
 		return ctrl.Result{}, nil
 	}
 
 	if len(csr.Status.Certificate) > 0 {
-		klog.V(3).Info("The CSR is already signed. No need to do anything else.")
+		r.Logger.V(3).Info("The CSR is already signed")
 		return ctrl.Result{}, nil
 	}
 
 	cr, err := parseCSR(csr.Spec.Request)
 	if err != nil {
-		klog.Errorf("Unable to parse CSR %q, %v", csr.Name, err)
+		r.Logger.Error(err, "Unable to parse CSR", "name", csr.Name)
 
 		return ctrl.Result{}, err
 	}
 
 	if !strings.HasPrefix(csr.Spec.Username, "system:node:") {
-		klog.V(3).Info("The CSR is not scoped for a kubelet, ignoring")
+		r.Logger.V(3).Info("The CSR is not scoped for a kubelet, ignoring")
 		return ctrl.Result{}, err
 	}
 
@@ -81,14 +80,14 @@ func (r *CertificateSigningRequestReconciler) Reconcile(ctx context.Context, req
 	_, err = r.ClientSet.CertificatesV1().CertificateSigningRequests().UpdateApproval(ctx, req.Name, &csr, metav1.UpdateOptions{})
 
 	if apierrors.IsConflict(err) || apierrors.IsNotFound(err) {
-		klog.Errorf("CSR %s/%s is conflicting or not found, requeueing, %v", req.Namespace, req.Name, err)
+		r.Logger.Error(err, "CSR is conflicting or not found, requeueing", "name", req.Name)
 		return ctrl.Result{Requeue: true}, nil
 	} else if err != nil {
-		klog.Errorf("Could not update CSR %s/%s, %v", req.NamespacedName, req.Name, err)
+		r.Logger.Error(err, "Could not update CSR", "namespace", req.NamespacedName, "name", req.Name)
 		return ctrl.Result{}, err
 	}
 
-	klog.V(0).Infof("Approved kubelet-serving CSR %s/%s and finished reconciliation", req.Namespace, req.Name)
+	r.Logger.V(0).Info("Approved kubelet-serving CSR and finished reconciliation", "name", req.Name)
 
 	return ctrl.Result{}, nil
 }
@@ -102,7 +101,7 @@ func (r *CertificateSigningRequestReconciler) SetupWithManager(mgr ctrl.Manager)
 func (r *CertificateSigningRequestReconciler) Validate(ctx context.Context, csr *certificatesv1.CertificateSigningRequest, cr *x509.CertificateRequest) {
 	if len(cr.DNSNames)+len(cr.IPAddresses) == 0 {
 		reason := "CSR SAN contains neither an IP address nor a DNS name"
-		klog.V(0).Infof("Denying kubelet-serving CSR, %s", reason)
+		r.Logger.V(0).Info("Denying kubelet-serving CSR", "reason", reason)
 
 		appendCondition(csr, false, reason)
 		return
@@ -110,7 +109,7 @@ func (r *CertificateSigningRequestReconciler) Validate(ctx context.Context, csr 
 
 	if cr.Subject.CommonName != csr.Spec.Username {
 		reason := "CSR username does not match the parsed x509 certificate request CN"
-		klog.V(0).Infof("Denying kubelet-serving CSR, %s", reason)
+		r.Logger.V(0).Info("Denying kubelet-serving CSR", "reason", reason)
 
 		appendCondition(csr, false, reason)
 		return
