@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "tbctrl.fullname" . }}
+  name: {{ include "tbctrl.fullname" . }}-controller
   labels:
     {{- include "tbctrl.labels" . | nindent 4 }}
 spec:
@@ -21,36 +21,58 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "tbctrl.serviceAccountName" . }}
+      serviceAccountName: {{ include "tbctrl.fullname" . }}-controller
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      priorityClassName: system-cluster-critical
       containers:
-        - name: {{ .Chart.Name }}
+        - name: controller
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - /controller
           args:
-            - --metrics-bind-address
-            - ":{{ .Values.metrics.port }}"
-            - --health-probe-bind-address
-            - ":8081"
-          {{- if .Values.logging.level }}
-            - -v
-            - {{ .Values.logging.level | quote }}
+            - "--metrics-bind-address=127.0.0.1:8080"
+            - "--health-probe-bind-address=:8081"
+            - "--leader-elect"
+          {{- if .Values.debug.logLevel }}
+            - "-v={{ .Values.debug.logLevel }}"
           {{- end }}
-          {{- if .Values.metrics.enabled }}
           ports:
             - name: metrics
-              containerPort: {{ .Values.metrics.port }}
+              containerPort: 8080
               protocol: TCP
-          {{- end }}
           livenessProbe:
             httpGet:
               path: /healthz
               port: 8081
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+        - name: kube-rbac-proxy
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - "ALL"
+          image: gcr.io/kubebuilder/kube-rbac-proxy:v0.13.0
+          args:
+            - "--secure-listen-address=0.0.0.0:8443"
+            - "--upstream=http://127.0.0.1:8080/"
+            - "--logtostderr=true"
+            - "--v=0"
+          ports:
+            - containerPort: 8443
+              protocol: TCP
+              name: https
+          resources:
+            limits:
+              cpu: 500m
+              memory: 128Mi
+            requests:
+              cpu: 5m
+              memory: 64Mi
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -63,3 +85,4 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      terminationGracePeriodSeconds: 10

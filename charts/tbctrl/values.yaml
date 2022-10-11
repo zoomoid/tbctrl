@@ -2,11 +2,11 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-logging:
-  level: 0
+debug:
+  logLevel: 0
 
 image:
-  repository: ghcr.io/zoomoid/tbctrl/tbctrl
+  repository: ghcr.io/zoomoid/tbctrl/controller
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: ""
@@ -14,36 +14,30 @@ image:
 metrics:
   enabled: true
   serviceType: ClusterIP
-  port: 8080
-  annotations: {}
+  port: 8443
+  serviceMonitor: false
 
 imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 
-serviceAccount:
-  # Specifies whether a service account should be created
-  create: true
-  # Annotations to add to the service account
-  annotations: {}
-  # The name of the service account to use.
-  # If not set and create is true, a name is generated using the fullname template
-  name: ""
-
-podAnnotations: {}
+podAnnotations:
+  kubectl.kubernetes.io/default-container: controller
 
 podSecurityContext:
-  {}
-  # fsGroup: 2000
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
 
 securityContext:
-  runAsUser: 65532
-  runAsNonRoot: true
-  privileged: false
   allowPrivilegeEscalation: false
-  readOnlyRootFilesystem: true
   capabilities:
-    drop: ["all"]
+    drop:
+      - "ALL"
+  privileged: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 65532
 
 resources:
   requests:
@@ -68,9 +62,6 @@ tolerations:
   - effect: NoSchedule
     operator: Exists
     key: "node.kubernetes.io/not-ready"
-
-rbac:
-  manage: true
 
 dnsPolicy: ""
 
