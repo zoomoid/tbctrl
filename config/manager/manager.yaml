@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: controller
+  namespace: system
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tbctrl
+  template:
+    metadata:
+      annotations:
+        kubectl.kubernetes.io/default-container: controller
+      labels:
+        app.kubernetes.io/name: tbctrl
+    spec:
+      serviceAccountName: tbctrl-controller
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      priorityClassName: system-cluster-critical
+      containers:
+        - name: controller
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - "ALL"
+            privileged: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65532
+          image: controller:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - /controller
+          args:
+            - --metrics-bind-address
+            - ":8080"
+            - --health-probe-bind-address
+            - ":8081"
+            - "--leader-elect"
+          ports:
+            - name: metrics
+              containerPort: 8080
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8081
+          resources:
+            limits:
+              cpu: 500m
+              memory: 128Mi
+            requests:
+              cpu: 100m
+              memory: 64Mi
+      tolerations:
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/master
+          operator: Equal
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/control-plane
+          operator: Equal
+        - effect: NoSchedule
+          value: "true"
+          key: "node.cloudprovider.kubernetes.io/uninitialized"
+        - effect: NoSchedule
+          operator: Exists
+          key: "node.kubernetes.io/not-ready"
+      terminationGracePeriodSeconds: 10
