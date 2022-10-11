@@ -6,10 +6,10 @@ debug:
   logLevel: 0
 
 image:
-  repository: ghcr.io/zoomoid/tbctrl/controller
+  repository: ghcr.io/zoomoid/tbctrl
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: ""
+  # tag: "latest"
 
 metrics:
   enabled: true

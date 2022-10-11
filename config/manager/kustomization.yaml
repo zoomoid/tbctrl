@@ -9,5 +9,5 @@ generatorOptions:
 
 images:
 - name: controller
-  newName: ghcr.io/zoomoid/tbctrl/controller
+  newName: ghcr.io/zoomoid/tbctrl
   newTag: 0.2.0

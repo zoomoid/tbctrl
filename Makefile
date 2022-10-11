@@ -10,7 +10,7 @@ VERSION ?= 0.0.1
 IMAGE_TAG_BASE ?= ghcr.io/zoomoid/tbctrl
 
 # Image URL to use all building/pushing image targets
-IMG ?= $(IMAGE_TAG_BASE)/controller:$(VERSION)
+IMG ?= $(IMAGE_TAG_BASE):$(VERSION)
 
 REVISION ?= $(shell git rev-parse --short HEAD)
 
@@ -24,7 +24,7 @@ all: build
 
 .PHONY: manifests
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
-	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=manifests/crd/bases
+	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..."
 
 .PHONY: fmt
 fmt: ## Run go fmt against code.
