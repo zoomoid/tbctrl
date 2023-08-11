@@ -3,9 +3,11 @@ ARG VERSION="0.0.0-dev.0"
 ARG REVISION=""
 
 # Build the manager binary
-FROM golang:1.18 as builder
+FROM --platform=${BUILDPLATFORM} golang:1.20 as builder
 
-WORKDIR /workspace
+ARG BUILDPLATFORM
+
+WORKDIR /src
 # Copy the Go Modules manifests
 COPY go.mod go.mod
 COPY go.sum go.sum
@@ -17,8 +19,9 @@ RUN go mod download
 COPY main.go main.go
 COPY controllers/ controllers/
 
+ARG TARGETOS TARGETARCH
 # Build
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "${EXTRA_LDFLAGS} -X main.Version=${VERSION} -X main.Build=${REVISION}" -a -o controller main.go
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -ldflags "${EXTRA_LDFLAGS} -X main.Version=${VERSION} -X main.Build=${REVISION}" -a -o controller main.go
 
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
@@ -31,7 +34,7 @@ LABEL org.opencontainers.image.version ${VERSION}
 LABEL org.opencontainers.image.revision ${REVISION}
 
 WORKDIR /
-COPY --from=builder /workspace/controller .
+COPY --from=builder /src/controller .
 USER 65532:65532
 
 ENTRYPOINT ["/controller"]
