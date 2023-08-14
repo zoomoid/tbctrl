@@ -218,7 +218,7 @@ spec:
         - --leader-elect
         command:
         - /controller
-        image: ghcr.io/zoomoid/tbctrl/controller:0.3.1
+        image: ghcr.io/zoomoid/tbctrl/controller:0.3.3
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
