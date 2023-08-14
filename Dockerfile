@@ -25,7 +25,7 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -ldflags "${EXT
 
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
-FROM gcr.io/distroless/static:nonroot
+FROM gcr.io/distroless/base:nonroot
 
 LABEL org.opencontainers.image.source https://github.com/zoomoid/tbctrl
 LABEL org.opencontainers.image.description "A Kubernetes controller to auto-approve kubelet serving certificates for TLS traffic from the API server to the kubelet"
