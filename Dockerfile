@@ -3,7 +3,7 @@ ARG VERSION="0.0.0-dev.0"
 ARG REVISION=""
 
 # Build the manager binary
-FROM --platform=${BUILDPLATFORM} golang:1.20 as builder
+FROM --platform=${BUILDPLATFORM} golang:1.21 as builder
 
 ARG BUILDPLATFORM
 
