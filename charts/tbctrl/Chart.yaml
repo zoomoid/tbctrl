@@ -2,7 +2,7 @@ apiVersion: v2
 name: tbctrl
 description: A Helm chart for running a controller that approves or denies kubelet-serving CSRs
 type: application
-version: 0.5.0
+version: 0.5.1
 appVersion: "0.5.0"
 
 maintainers:

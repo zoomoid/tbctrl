@@ -43,9 +43,9 @@ spec:
           {{- end }}
           env:
             - name: K8S_SERVICE_HOST
-              value: {{ .Values.k8s.host }}
+              value: {{ .Values.k8s.host | quote | default "" }}
             - name: K8S_SERVICE_PORT
-              value: {{ .Value.k8s.port }}
+              value: {{ .Values.k8s.port | quote | default "" }}
           ports:
             - name: metrics
               containerPort: 8080
