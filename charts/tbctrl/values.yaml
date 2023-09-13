@@ -66,3 +66,8 @@ tolerations:
 dnsPolicy: ""
 
 affinity: {}
+
+# because the manager does not run in the network namespace managed by a CNI, but the host interface,
+k8s:
+  host: ""
+  port: ""

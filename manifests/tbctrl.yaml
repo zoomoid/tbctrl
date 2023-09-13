@@ -218,8 +218,9 @@ spec:
         - --leader-elect
         command:
         - /controller
-        image: ghcr.io/zoomoid/tbctrl/controller:0.3.3
+        image: ghcr.io/zoomoid/tbctrl/controller:0.5.0
         imagePullPolicy: IfNotPresent
+        hostNetwork: true
         livenessProbe:
           httpGet:
             path: /healthz

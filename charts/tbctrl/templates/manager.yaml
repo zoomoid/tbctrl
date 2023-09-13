@@ -25,6 +25,7 @@ spec:
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       priorityClassName: system-cluster-critical
+      hostNetwork: true
       containers:
         - name: controller
           securityContext:
@@ -40,6 +41,11 @@ spec:
           {{- if .Values.debug.logLevel }}
             - "-v={{ .Values.debug.logLevel }}"
           {{- end }}
+          env:
+            - name: K8S_SERVICE_HOST
+              value: {{ .Values.k8s.host }}
+            - name: K8S_SERVICE_PORT
+              value: {{ .Value.k8s.port }}
           ports:
             - name: metrics
               containerPort: 8080
