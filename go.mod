@@ -8,7 +8,7 @@ toolchain go1.22.2
 require (
 	github.com/go-logr/logr v1.4.1
 	github.com/spf13/pflag v1.0.5
-	k8s.io/api v0.29.3
+	k8s.io/api v0.30.0
 	k8s.io/apimachinery v0.30.0
 	k8s.io/client-go v0.29.3
 	k8s.io/klog/v2 v2.120.1
