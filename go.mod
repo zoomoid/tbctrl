@@ -1,7 +1,7 @@
 module github.com/zoomoid/tbctrl
 
 go 1.21
-toolchain go1.22.4
+toolchain go1.22.5
 
 // replace github.com/googleapis/gnostic => github.com/googleapis/gnostic v0.5.5
 
@@ -9,7 +9,7 @@ require (
 	github.com/go-logr/logr v1.4.2
 	github.com/spf13/pflag v1.0.5
 	k8s.io/api v0.30.2
-	k8s.io/apimachinery v0.30.2
+	k8s.io/apimachinery v0.30.3
 	k8s.io/client-go v0.30.2
 	k8s.io/klog/v2 v2.130.1
 	sigs.k8s.io/controller-runtime v0.18.4
