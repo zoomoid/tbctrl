@@ -7,7 +7,7 @@ toolchain go1.24.1
 // replace github.com/googleapis/gnostic => github.com/googleapis/gnostic v0.5.5
 
 require (
-	github.com/go-logr/logr v1.4.2
+	github.com/go-logr/logr v1.4.3
 	github.com/spf13/pflag v1.0.6
 	k8s.io/api v0.33.1
 	k8s.io/apimachinery v0.33.1
