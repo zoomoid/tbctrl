@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
+	"slices"
 	"strings"
 
 	"github.com/go-logr/logr"
@@ -12,11 +13,13 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/validation"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	ctrl "sigs.k8s.io/controller-runtime"
 )
@@ -33,20 +36,13 @@ type CertificateSigningRequestReconciler struct {
 	Logger logr.Logger
 }
 
+var _ reconcile.ObjectReconciler[*certificatesv1.CertificateSigningRequest] = &CertificateSigningRequestReconciler{}
+
 //+kubebuilder:rbac:groups=certificates.k8s.io,resources=certificatesigningrequests,verbs=get;watch;list
 //+kubebuilder:rbac:groups=certificates.k8s.io,resources=certificatesigningrequests/approval,verbs=update
 //+kubebuilder:rbac:groups=certificates.k8s.io,resources=signers,resourceNames="kubernetes.io/kubelet-serving",verbs=approve
 
-func (r *CertificateSigningRequestReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	var csr certificatesv1.CertificateSigningRequest
-	if err := r.Get(ctx, req.NamespacedName, &csr); err != nil {
-		if apierrors.IsNotFound(err) {
-			return ctrl.Result{}, err
-		}
-		r.Logger.Error(err, "Unable to get CSR", "name", req.Name)
-		return ctrl.Result{}, err
-	}
-
+func (r *CertificateSigningRequestReconciler) Reconcile(ctx context.Context, csr *certificatesv1.CertificateSigningRequest) (ctrl.Result, error) {
 	if csr.Spec.SignerName != certificatesv1.KubeletServingSignerName {
 		r.Logger.V(4).Info("Ignoring non-kubelet-serving CSR")
 
@@ -75,19 +71,19 @@ func (r *CertificateSigningRequestReconciler) Reconcile(ctx context.Context, req
 		return ctrl.Result{}, err
 	}
 
-	r.Validate(ctx, &csr, cr)
+	r.Validate(ctx, csr, cr)
 
-	_, err = r.ClientSet.CertificatesV1().CertificateSigningRequests().UpdateApproval(ctx, req.Name, &csr, metav1.UpdateOptions{})
+	_, err = r.ClientSet.CertificatesV1().CertificateSigningRequests().UpdateApproval(ctx, csr.Name, csr, metav1.UpdateOptions{})
 
 	if apierrors.IsConflict(err) || apierrors.IsNotFound(err) {
-		r.Logger.Error(err, "CSR is conflicting or not found, requeueing", "name", req.Name)
+		r.Logger.Error(err, "CSR is conflicting or not found, requeueing", "name", csr.Name)
 		return ctrl.Result{Requeue: true}, nil
 	} else if err != nil {
-		r.Logger.Error(err, "Could not update CSR", "namespace", req.NamespacedName, "name", req.Name)
+		r.Logger.Error(err, "Could not update CSR", "namespace", csr.Namespace, "name", csr.Name)
 		return ctrl.Result{}, err
 	}
 
-	r.Logger.V(0).Info("Approved kubelet-serving CSR and finished reconciliation", "name", req.Name)
+	r.Logger.V(0).Info("Approved kubelet-serving CSR and finished reconciliation", "name", csr.Name)
 
 	return ctrl.Result{}, nil
 }
@@ -95,27 +91,85 @@ func (r *CertificateSigningRequestReconciler) Reconcile(ctx context.Context, req
 func (r *CertificateSigningRequestReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&certificatesv1.CertificateSigningRequest{}).
-		Complete(r)
+		Complete(reconcile.AsReconciler(mgr.GetClient(), &CertificateSigningRequestReconciler{}))
 }
 
 func (r *CertificateSigningRequestReconciler) Validate(ctx context.Context, csr *certificatesv1.CertificateSigningRequest, cr *x509.CertificateRequest) {
-	if len(cr.DNSNames)+len(cr.IPAddresses) == 0 {
-		reason := "CSR SAN contains neither an IP address nor a DNS name"
+	// Check for https://kubernetes.io/docs/reference/access-authn-authz/kubelet-tls-bootstrapping/#client-and-serving-certificates
+	if err := validateNames(csr, cr); err != nil {
+		reason := err.Error()
 		r.Logger.V(0).Info("Denying kubelet-serving CSR", "reason", reason)
-
 		appendCondition(csr, false, reason)
-		return
 	}
 
-	if cr.Subject.CommonName != csr.Spec.Username {
-		reason := "CSR username does not match the parsed x509 certificate request CN"
+	if err := validateKeyUsage(csr); err != nil {
+		reason := err.Error()
 		r.Logger.V(0).Info("Denying kubelet-serving CSR", "reason", reason)
-
 		appendCondition(csr, false, reason)
-		return
+	}
+
+	if err := validateSubjectAltName(cr); err != nil {
+		reason := err.Error()
+		r.Logger.V(0).Info("Denying kubelet-serving CSR", "reason", reason)
+		appendCondition(csr, false, reason)
 	}
 
 	appendCondition(csr, true, "CSR is scoped correctly")
+}
+
+func validateNames(csr *certificatesv1.CertificateSigningRequest, cr *x509.CertificateRequest) error {
+	if cr.Subject.CommonName != csr.Spec.Username {
+		return errors.New("CSR username does not match the parsed x509 certificate request CN")
+	}
+
+	if len(csr.Spec.Groups) != 1 || csr.Spec.Groups[0] != "system:nodes" {
+		return errors.New(".spec.groups may only contain 'system:nodes'")
+	}
+
+	usernamePrefix := "system:node:"
+	if !strings.HasPrefix(csr.Spec.Username, usernamePrefix) {
+		return errors.New(".spec.username must start with 'system:node:'")
+	}
+
+	nodeName, _ := strings.CutPrefix(csr.Spec.Username, usernamePrefix)
+	// we already checked that the string has the prefix
+	if errs := validation.IsDNS1123Subdomain(nodeName); len(errs) != 0 {
+		return errors.New("CSR's node name must be a DNS subdomain name")
+	}
+
+	return nil
+}
+
+func validateKeyUsage(csr *certificatesv1.CertificateSigningRequest) error {
+	l := len(csr.Spec.Usages)
+	hasServerAuth := slices.Contains(csr.Spec.Usages, certificatesv1.UsageServerAuth)
+	hasKeyEncipherment := slices.Contains(csr.Spec.Usages, certificatesv1.UsageKeyEncipherment)
+	hasDigitalSignature := slices.Contains(csr.Spec.Usages, certificatesv1.UsageDigitalSignature)
+
+	if hasServerAuth && ((l == 2 && (hasDigitalSignature || hasKeyEncipherment)) || (l == 3 && hasKeyEncipherment && hasDigitalSignature)) {
+		return nil
+	}
+
+	return errors.New("key usage may only be 'server auth', and optionally 'key encipherment' and 'digital signature'")
+}
+
+func validateSubjectAltName(cr *x509.CertificateRequest) error {
+	ip := cr.IPAddresses
+	dns := cr.DNSNames
+
+	if len(dns)+len(ip) == 0 {
+		return errors.New("CSR SAN contains neither an IP address nor a DNS name")
+	}
+
+	if len(cr.URIs) > 0 {
+		return errors.New("CSR SAN may not contain URIs")
+	}
+
+	if len(cr.EmailAddresses) > 0 {
+		return errors.New("CSR SAN may not contain email adresses")
+	}
+
+	return nil
 }
 
 func appendCondition(csr *certificatesv1.CertificateSigningRequest, approve bool, reason string) {
