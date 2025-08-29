@@ -79,6 +79,64 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
+  name: tbctrl-metrics-auth
+  labels:
+    app.kubernetes.io/name: tbctrl
+rules:
+- apiGroups:
+  - authentication.k8s.io
+  resources:
+  - tokenreviews
+  verbs:
+  - create
+- apiGroups:
+  - authorization.k8s.io
+  resources:
+  - subjectaccessreviews
+  verbs:
+  - create
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: tbctrl-metrics-reader
+  labels:
+    app.kubernetes.io/name: tbctrl
+rules:
+- nonResourceURLs:
+  - "/metrics"
+  verbs:
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: metrics-auth-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: tbctrl-metrics-auth
+subjects:
+- kind: ServiceAccount
+  name: tbctrl-controller
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: metrics-auth-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: tbctrl-metrics-reader
+subjects:
+- kind: ServiceAccount
+  name: tbctrl-controller
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
   labels:
     app.kubernetes.io/name: tbctrl
   name: tbctrl-metrics-reader
@@ -190,32 +248,10 @@ spec:
     spec:
       containers:
       - args:
-        - --secure-listen-address=0.0.0.0:8443
-        - --upstream=http://127.0.0.1:8080/
-        - --logtostderr=true
-        - --v=0
-        image: gcr.io/kubebuilder/kube-rbac-proxy:v0.13.0
-        name: kube-rbac-proxy
-        ports:
-        - containerPort: 8443
-          name: https
-          protocol: TCP
-        resources:
-          limits:
-            cpu: 500m
-            memory: 128Mi
-          requests:
-            cpu: 5m
-            memory: 64Mi
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-            - ALL
-      - args:
         - --health-probe-bind-address=:8081
-        - --metrics-bind-address=127.0.0.1:8080
-        - --leader-elect
+        - --metrics-bind-address=:8443
+        - --leader-elect=false # disable leader election, cause this might cause errors in clusters that are not fully ready yet.
+        - --metrics-secure=false # only enable TLS on metrics endpoint if you have a CA set up already
         command:
         - /controller
         image: ghcr.io/zoomoid/tbctrl/controller:0.5.0
@@ -227,7 +263,7 @@ spec:
             port: 8081
         name: controller
         ports:
-        - containerPort: 8080
+        - containerPort: 8443
           name: metrics
           protocol: TCP
         resources:
