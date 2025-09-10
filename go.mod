@@ -3,7 +3,7 @@ module github.com/zoomoid/tbctrl
 go 1.25.0
 
 require (
-	github.com/go-logr/logr v1.4.2
+	github.com/go-logr/logr v1.4.3
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
 	k8s.io/api v0.33.0
