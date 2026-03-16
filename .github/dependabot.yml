@@ -12,4 +12,18 @@ updates:
       - "dependencies"
     schedule:
       interval: "weekly"
+    groups:
+      all:
+        patterns:
+          - "*"
+    open-pull-requests-limit: 10
     target-branch: main
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: weekly
+    groups:
+      all:
+        patterns:
+          - "*"
+    open-pull-requests-limit: 10

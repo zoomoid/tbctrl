@@ -3,7 +3,7 @@ ARG VERSION="0.0.0-dev.0"
 ARG REVISION=""
 
 # Build the manager binary
-FROM --platform=${BUILDPLATFORM} golang:1.21 as builder
+FROM --platform=${BUILDPLATFORM} golang:1.26 AS builder
 
 ARG BUILDPLATFORM
 
@@ -27,11 +27,14 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -ldflags "${EXT
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
 FROM gcr.io/distroless/base:nonroot
 
-LABEL org.opencontainers.image.source https://github.com/zoomoid/tbctrl
-LABEL org.opencontainers.image.description "A Kubernetes controller to auto-approve kubelet serving certificates for TLS traffic from the API server to the kubelet"
-LABEL org.opencontainers.image.licenses "Apache-2.0"
-LABEL org.opencontainers.image.version ${VERSION}
-LABEL org.opencontainers.image.revision ${REVISION}
+ARG VERSION="0.0.0-dev.0"
+ARG REVISION=""
+
+LABEL org.opencontainers.image.source=https://github.com/zoomoid/tbctrl
+LABEL org.opencontainers.image.description="A Kubernetes controller to auto-approve kubelet serving certificates for TLS traffic from the API server to the kubelet"
+LABEL org.opencontainers.image.licenses="Apache-2.0"
+LABEL org.opencontainers.image.version="${VERSION}"
+LABEL org.opencontainers.image.revision="${REVISION}"
 
 WORKDIR /
 COPY --from=builder /src/controller .
