@@ -35,7 +35,7 @@ jobs:
           password: ${{ secrets.DOCKER_HUB_PASSWORD }}
       - name: Set short SHA as revision output
         id: vars
-        run: echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
+        run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
       - name: Extract Docker metadata
         id: meta
         uses: docker/metadata-action@v6
@@ -55,7 +55,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             VERSION=${{ github.ref_name }}
-            REVISION=${{ steps.vars.outputs.sha_short }}
+            REVISION=${{ env.sha_short }}
 
   publish-chart:
     runs-on: ubuntu-latest
