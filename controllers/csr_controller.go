@@ -27,7 +27,7 @@ const (
 )
 
 type CertificateSigningRequestReconciler struct {
-	certificateClient typedcertificatesv1.CertificatesV1Interface
+	certificateClient typedcertificatesv1.CertificateSigningRequestInterface
 	logger            logr.Logger
 }
 
@@ -41,7 +41,7 @@ func (r *CertificateSigningRequestReconciler) SetupWithManager(mgr ctrl.Manager)
 	if err != nil {
 		return fmt.Errorf("failed to initialize certificate client: %w", err)
 	}
-	r.certificateClient = certificateClient
+	r.certificateClient = certificateClient.CertificateSigningRequests()
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&certificatesv1.CertificateSigningRequest{}).
@@ -81,9 +81,9 @@ func (r *CertificateSigningRequestReconciler) Reconcile(ctx context.Context, csr
 		return ctrl.Result{}, err
 	}
 
-	r.validate(ctx, csr, cr)
+	r.validate(csr, cr)
 
-	_, err = r.certificateClient.CertificateSigningRequests().UpdateApproval(ctx, csr.Name, csr, metav1.UpdateOptions{})
+	_, err = r.certificateClient.UpdateApproval(ctx, csr.Name, csr, metav1.UpdateOptions{})
 
 	if apierrors.IsConflict(err) || apierrors.IsNotFound(err) {
 		r.logger.Error(err, "CSR is conflicting or not found, requeueing", "name", csr.Name)
@@ -98,7 +98,7 @@ func (r *CertificateSigningRequestReconciler) Reconcile(ctx context.Context, csr
 	return ctrl.Result{}, nil
 }
 
-func (r *CertificateSigningRequestReconciler) validate(ctx context.Context, csr *certificatesv1.CertificateSigningRequest, cr *x509.CertificateRequest) {
+func (r *CertificateSigningRequestReconciler) validate(csr *certificatesv1.CertificateSigningRequest, cr *x509.CertificateRequest) {
 	// Check for https://kubernetes.io/docs/reference/access-authn-authz/kubelet-tls-bootstrapping/#client-and-serving-certificates
 	if err := validateNames(csr, cr); err != nil {
 		reason := err.Error()
