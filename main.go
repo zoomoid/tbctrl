@@ -11,7 +11,6 @@ import (
 	"github.com/spf13/viper"
 
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/klog/v2"
 
@@ -73,6 +72,14 @@ func main() {
 
 	var tlsOpts []func(*tls.Config)
 
+	disableHTTP2 := func(c *tls.Config) {
+		l.Info("disabling http/2")
+		c.NextProtos = []string{"http/1.1"}
+	}
+	if !viper.GetBool("enable-http2") {
+		tlsOpts = append(tlsOpts, disableHTTP2)
+	}
+
 	// Create watchers for metrics and webhooks certificates
 	var metricsCertWatcher *certwatcher.CertWatcher
 
@@ -112,15 +119,6 @@ func main() {
 		metricsServerOptions.FilterProvider = filters.WithAuthenticationAndAuthorization
 	}
 
-	disableHTTP2 := func(c *tls.Config) {
-		l.Info("disabling http/2")
-		c.NextProtos = []string{"http/1.1"}
-	}
-
-	if !viper.GetBool("enable-http2") {
-		tlsOpts = append(tlsOpts, disableHTTP2)
-	}
-
 	l.V(0).Info("Starting controller", "version", Version, "build", Build)
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme:                 scheme,
@@ -134,12 +132,7 @@ func main() {
 		l.Error(err, "unable to start manager")
 		os.Exit(1)
 	}
-	if err = (&controller.CertificateSigningRequestReconciler{
-		Client:    mgr.GetClient(),
-		Scheme:    mgr.GetScheme(),
-		Config:    mgr.GetConfig(),
-		ClientSet: kubernetes.NewForConfigOrDie(mgr.GetConfig()),
-	}).SetupWithManager(mgr); err != nil {
+	if err = (&controller.CertificateSigningRequestReconciler{}).SetupWithManager(mgr); err != nil {
 		l.Error(err, "unable to create controller", "controller", "CertificateSigningRequestManager")
 		os.Exit(1)
 	}
