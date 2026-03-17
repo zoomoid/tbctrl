@@ -28,14 +28,11 @@ const (
 
 type CertificateSigningRequestReconciler struct {
 	certificateClient typedcertificatesv1.CertificateSigningRequestInterface
-	logger            logr.Logger
 }
 
 var _ reconcile.ObjectReconciler[*certificatesv1.CertificateSigningRequest] = &CertificateSigningRequestReconciler{}
 
 func (r *CertificateSigningRequestReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	r.logger = mgr.GetLogger().WithName("csr-controller")
-
 	cfg := mgr.GetConfig()
 	certificateClient, err := typedcertificatesv1.NewForConfig(cfg)
 	if err != nil {
@@ -45,7 +42,13 @@ func (r *CertificateSigningRequestReconciler) SetupWithManager(mgr ctrl.Manager)
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&certificatesv1.CertificateSigningRequest{}).
-		Complete(reconcile.AsReconciler(mgr.GetClient(), &CertificateSigningRequestReconciler{}))
+		WithLogConstructor(func(r *reconcile.Request) logr.Logger {
+			if r == nil {
+				return mgr.GetLogger().WithName("csr-controller")
+			}
+			return mgr.GetLogger().WithName("csr-controller").WithValues("name", r.Name)
+		}).
+		Complete(reconcile.AsReconciler(mgr.GetClient(), r))
 }
 
 //+kubebuilder:rbac:groups=certificates.k8s.io,resources=certificatesigningrequests,verbs=get;watch;list
@@ -53,68 +56,71 @@ func (r *CertificateSigningRequestReconciler) SetupWithManager(mgr ctrl.Manager)
 //+kubebuilder:rbac:groups=certificates.k8s.io,resources=signers,resourceNames="kubernetes.io/kubelet-serving",verbs=approve
 
 func (r *CertificateSigningRequestReconciler) Reconcile(ctx context.Context, csr *certificatesv1.CertificateSigningRequest) (ctrl.Result, error) {
+	logger := ctrl.LoggerFrom(ctx)
+
 	if csr.Spec.SignerName != certificatesv1.KubeletServingSignerName {
-		r.logger.V(4).Info("Ignoring non-kubelet-serving CSR")
+		logger.V(4).Info("Ignoring non-kubelet-serving CSR")
 
 		return ctrl.Result{}, nil
 	}
 
 	if approved, denied := getCertApprovalCondition(&csr.Status); approved || denied {
-		r.logger.V(3).Info("The CSR is already approved/denied, ignoring", "approved", approved, "denied", denied)
+		logger.V(3).Info("The CSR is already approved/denied, ignoring", "approved", approved, "denied", denied)
 		return ctrl.Result{}, nil
 	}
 
 	if len(csr.Status.Certificate) > 0 {
-		r.logger.V(3).Info("The CSR is already signed")
+		logger.V(3).Info("The CSR is already signed")
 		return ctrl.Result{}, nil
 	}
 
 	cr, err := parseCSR(csr.Spec.Request)
 	if err != nil {
-		r.logger.Error(err, "Unable to parse CSR", "name", csr.Name)
+		logger.Error(err, "Unable to parse CSR", "name", csr.Name)
 
 		return ctrl.Result{}, err
 	}
 
 	if !strings.HasPrefix(csr.Spec.Username, "system:node:") {
-		r.logger.V(3).Info("The CSR is not scoped for a kubelet, ignoring")
+		logger.V(3).Info("The CSR is not scoped for a kubelet, ignoring")
 		return ctrl.Result{}, err
 	}
 
-	r.validate(csr, cr)
+	r.validate(ctx, csr, cr)
 
 	_, err = r.certificateClient.UpdateApproval(ctx, csr.Name, csr, metav1.UpdateOptions{})
-
 	if apierrors.IsConflict(err) || apierrors.IsNotFound(err) {
-		r.logger.Error(err, "CSR is conflicting or not found, requeueing", "name", csr.Name)
+		logger.Error(err, "CSR is conflicting or not found, requeueing", "name", csr.Name)
 		return ctrl.Result{Requeue: true}, nil
 	} else if err != nil {
-		r.logger.Error(err, "Could not update CSR", "namespace", csr.Namespace, "name", csr.Name)
+		logger.Error(err, "Could not update CSR", "namespace", csr.Namespace, "name", csr.Name)
 		return ctrl.Result{}, err
 	}
 
-	r.logger.V(0).Info("Approved kubelet-serving CSR and finished reconciliation", "name", csr.Name)
+	logger.V(0).Info("Approved kubelet-serving CSR and finished reconciliation", "name", csr.Name)
 
 	return ctrl.Result{}, nil
 }
 
-func (r *CertificateSigningRequestReconciler) validate(csr *certificatesv1.CertificateSigningRequest, cr *x509.CertificateRequest) {
+func (r *CertificateSigningRequestReconciler) validate(ctx context.Context, csr *certificatesv1.CertificateSigningRequest, cr *x509.CertificateRequest) {
+	logger := ctrl.LoggerFrom(ctx)
+
 	// Check for https://kubernetes.io/docs/reference/access-authn-authz/kubelet-tls-bootstrapping/#client-and-serving-certificates
 	if err := validateNames(csr, cr); err != nil {
 		reason := err.Error()
-		r.logger.V(0).Info("Denying kubelet-serving CSR", "reason", reason)
+		logger.V(0).Info("Denying kubelet-serving CSR", "reason", reason)
 		appendCondition(csr, false, reason)
 	}
 
 	if err := validateKeyUsage(csr); err != nil {
 		reason := err.Error()
-		r.logger.V(0).Info("Denying kubelet-serving CSR", "reason", reason)
+		logger.V(0).Info("Denying kubelet-serving CSR", "reason", reason)
 		appendCondition(csr, false, reason)
 	}
 
 	if err := validateSubjectAltName(cr); err != nil {
 		reason := err.Error()
-		r.logger.V(0).Info("Denying kubelet-serving CSR", "reason", reason)
+		logger.V(0).Info("Denying kubelet-serving CSR", "reason", reason)
 		appendCondition(csr, false, reason)
 	}
 
@@ -126,8 +132,8 @@ func validateNames(csr *certificatesv1.CertificateSigningRequest, cr *x509.Certi
 		return errors.New("CSR username does not match the parsed x509 certificate request CN")
 	}
 
-	if len(csr.Spec.Groups) != 1 || csr.Spec.Groups[0] != "system:nodes" {
-		return errors.New(".spec.groups may only contain 'system:nodes'")
+	if len(csr.Spec.Groups) != 2 || !(slices.Contains(csr.Spec.Groups, "system:nodes") && slices.Contains(csr.Spec.Groups, "system:authenticated")) {
+		return errors.New(".spec.groups may only contain 'system:nodes' and 'system:authenticated'")
 	}
 
 	usernamePrefix := "system:node:"
