@@ -8,9 +8,9 @@ require (
 	github.com/go-logr/logr v1.4.3
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
-	k8s.io/api v0.36.1
-	k8s.io/apimachinery v0.36.1
-	k8s.io/client-go v0.36.1
+	k8s.io/api v0.36.2
+	k8s.io/apimachinery v0.36.2
+	k8s.io/client-go v0.36.2
 	k8s.io/klog/v2 v2.140.0
 	sigs.k8s.io/controller-runtime v0.24.1
 )
@@ -62,7 +62,7 @@ require (
 	google.golang.org/grpc v1.79.3 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.13.0 // indirect
 	k8s.io/apiserver v0.36.0 // indirect
-	k8s.io/streaming v0.36.1 // indirect
+	k8s.io/streaming v0.36.2 // indirect
 	sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.34.0 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v6 v6.3.2 // indirect
@@ -87,7 +87,7 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.3-0.20250322232337-35a7c28c31ee // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
-	github.com/onsi/ginkgo/v2 v2.29.0
+	github.com/onsi/ginkgo/v2 v2.30.0
 	github.com/onsi/gomega v1.41.0
 	github.com/prometheus/client_golang v1.23.2 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
